@@ -34,6 +34,33 @@ def load_user(username: str):
     return None
 
 
+@app.after_request
+def add_security_headers(response):
+    csp = (
+        "default-src 'self'; "
+        "style-src 'self' https://cdn.jsdelivr.net;"
+        "script-src 'self' https://cdn.jsdelivr.net; "
+        "img-src 'self' data:; "
+        "font-src 'self'; "
+        "connect-src 'self'; "
+        "manifest-src 'self'; "
+        "worker-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "frame-ancestors 'none'; "
+        "form-action 'self'; "
+        "upgrade-insecure-requests"
+    )
+
+    response.headers["Content-Security-Policy"] = csp
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    return response
+
+
 @app.route("/success.html", methods=["GET", "POST"])
 @login_required
 def addFeedback():
