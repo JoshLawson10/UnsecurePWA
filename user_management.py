@@ -38,6 +38,15 @@ def authenticateUser(username: str, password: str) -> bool:
         )
 
 
+def userExists(username: str) -> bool:
+    with get_db_connection() as con:
+        cur = con.execute(
+            "SELECT 1 FROM users WHERE username = ?",
+            (username,),
+        )
+        return cur.fetchone() is not None
+
+
 def insertFeedback(feedback: str) -> None:
     with get_db_connection() as con:
         con.execute(
