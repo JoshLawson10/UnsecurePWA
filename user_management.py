@@ -1,53 +1,42 @@
 import sqlite3 as sql
 
-
-def insertUser(username, password, DoB):
-    con = sql.connect("database_files/database.db")
-    cur = con.cursor()
-    cur.execute(
-        "INSERT INTO users (username,password,dateOfBirth) VALUES (?,?,?)",
-        (username, password, DoB),
-    )
-    con.commit()
-    con.close()
+DB_PATH = "database_files/database.db"
 
 
-def retrieveUsers(username, password):
-    con = sql.connect("database_files/database.db")
-    cur = con.cursor()
+def get_db_connection():
+    return sql.connect(DB_PATH)
 
-    query = f"""
-    SELECT * FROM users
-    WHERE username = '{username}'
-    AND password = '{password}'
-    """
-    cur.execute(query)
 
-    result = cur.fetchone()
-    con.close()
+def insertUser(username: str, password: str, DoB: str) -> None:
+    hashed_password = password
 
-    if result:
-        return True
-    else:
-        return False
+    with get_db_connection() as con:
+        con.execute(
+            "INSERT INTO users (username, password, DoB) VALUES (?, ?, ?)",
+            (username, hashed_password, DoB),
+        )
+
+
+def authenticateUser(username: str, password: str) -> bool:
+    with get_db_connection() as con:
+        cur = con.execute("SELECT password FROM users WHERE username = ?", (username,))
+        row = cur.fetchone()
+
+        if row is None:
+            return False
+
+        stored_hash = row[0]
+
+        return stored_hash == password
 
 
 def insertFeedback(feedback):
-    con = sql.connect("database_files/database.db")
-    cur = con.cursor()
-    cur.execute(f"INSERT INTO feedback (feedback) VALUES ('{feedback}')")
-    con.commit()
-    con.close()
+    with get_db_connection() as con:
+        con.execute("INSERT INTO feedback (feedback) VALUES (?)", (feedback,))
 
 
-def listFeedback():
-    con = sql.connect("database_files/database.db")
-    cur = con.cursor()
-    data = cur.execute("SELECT * FROM feedback").fetchall()
-    con.close()
-    f = open("templates/partials/success_feedback.html", "w")
-    for row in data:
-        f.write("<p>\n")
-        f.write(f"{row[1]}\n")
-        f.write("</p>\n")
-    f.close()
+def getFeedbackList() -> list[str]:
+    with get_db_connection() as con:
+        data = con.execute("SELECT feedback FROM feedback").fetchall()
+        feedback_list = [row[0] for row in data]
+        return feedback_list
