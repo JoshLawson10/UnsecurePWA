@@ -1,11 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for
-from flask_cors import CORS
+from flask_wtf.csrf import CSRFProtect
 from config import Config
 import user_management as dbHandler
 
 app = Flask(__name__)
 app.config.from_object(Config)
-CORS(app)
+CSRFProtect(app)
 
 
 @app.route("/success.html", methods=["POST", "GET"])
