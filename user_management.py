@@ -4,6 +4,11 @@ import bcrypt
 
 DB_PATH = "database_files/database.db"
 
+_MAX_USERNAME: int = 50
+_MAX_PASSWORD: int = 128
+_MAX_DOB: int = 10
+_MAX_FEEDBACK: int = 500
+
 
 def get_db_connection() -> sql.Connection:
     con = sql.connect(DB_PATH)
@@ -12,6 +17,9 @@ def get_db_connection() -> sql.Connection:
 
 
 def insertUser(username: str, password: str, DoB: str) -> None:
+    username = username[:_MAX_USERNAME]
+    DoB = DoB[:_MAX_DOB]
+
     hashed_password: bytes = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     hashed_password_str: str = hashed_password.decode("utf-8")
 
@@ -51,6 +59,8 @@ def userExists(username: str) -> bool:
 
 
 def insertFeedback(feedback: str) -> None:
+    feedback = feedback[:_MAX_FEEDBACK]
+
     with get_db_connection() as con:
         con.execute(
             "INSERT INTO feedback (feedback) VALUES (?)",
