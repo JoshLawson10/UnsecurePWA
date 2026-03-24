@@ -1,6 +1,8 @@
 import re
 
 from flask import Flask, abort, redirect, render_template, request, url_for
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_login import (
     LoginManager,
     UserMixin,
@@ -19,6 +21,13 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 CSRFProtect(app)
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://",
+)
 
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -172,6 +181,7 @@ def addFeedback():
 
 
 @app.route("/signup.html", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
 def signup():
     if request.method == "GET":
         return render_template("/signup.html")
@@ -193,6 +203,7 @@ def signup():
 
 @app.route("/index.html", methods=["GET", "POST"])
 @app.route("/", methods=["GET", "POST"])
+@limiter.limit("20 per minute", methods=["POST"])
 def home():
     if request.method == "GET":
         msg = request.args.get("msg", "")
