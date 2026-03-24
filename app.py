@@ -14,6 +14,7 @@ from flask_wtf.csrf import CSRFProtect
 import user_management as dbHandler
 from config import Config
 
+# ---------- App Setup ----------
 app = Flask(__name__)
 app.config.from_object(Config)
 
@@ -23,6 +24,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "home"  # type: ignore
 
+
+# --------- Input Validation ----------
 MAX_USERNAME_LEN: int = 50
 MAX_PASSWORD_LEN: int = 128
 MAX_DOB_LEN: int = 10  # "YYYY-MM-DD"
@@ -69,6 +72,7 @@ def _validate_feedback(value: str) -> str:
     return value
 
 
+# --------- User Management ----------
 class User(UserMixin):
     def __init__(self, username: str):
         self.id = username
@@ -81,6 +85,7 @@ def load_user(username: str):
     return None
 
 
+# --------- security Headers ----------
 @app.after_request
 def add_security_headers(response):
     csp = (
@@ -108,6 +113,7 @@ def add_security_headers(response):
     return response
 
 
+# --------- Error Handlers ----------
 @app.errorhandler(400)
 def bad_request(e):
     return render_template("error.html", code=400, message="Bad request."), 400
@@ -147,6 +153,7 @@ def internal_error(e):
     ), 500
 
 
+# --------- Routes ----------
 @app.route("/success.html", methods=["GET", "POST"])
 @login_required
 def addFeedback():
