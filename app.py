@@ -15,10 +15,13 @@ from flask_wtf.csrf import CSRFProtect
 
 import user_management as dbHandler
 from config import Config
+from database_files.initialise_db import initialise_db
 
 # ---------- App Setup ----------
 app = Flask(__name__)
 app.config.from_object(Config)
+
+initialise_db()
 
 CSRFProtect(app)
 
