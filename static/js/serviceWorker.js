@@ -1,56 +1,69 @@
-const assets = [
-    "/",
-    "static/css/style.css",
-    "static/js/app.js",
-    "static/images/logo.png",
-    "static/images/favicon.jpg",
-    "static/icons/icon-128x128.png",
-    "static/icons/icon-192x192.png",
-    "static/icons/icon-384x384.png",
-    "static/icons/icon-512x512.png"
-  ];
+const CACHE_NAME = "pwa-assets-v2";
 
-const CATALOGUE_ASSETS = "catalogue-assets";
+const ASSETS = [
+  "/",
+  "/static/css/style.css",
+  "/static/js/app.js",
+  "/static/images/logo.svg",
+  "/static/images/favicon.png",
+  "/static/icons/icon-128x128.png",
+  "/static/icons/icon-192x192.png",
+  "/static/icons/icon-384x384.png",
+  "/static/icons/icon-512x512.png",
+];
 
-self.addEventListener("install", (installEvt) => {
-  installEvt.waitUntil(
+self.addEventListener("install", (evt) => {
+  evt.waitUntil(
     caches
-      .open(CATALOGUE_ASSETS)
-      .then((cache) => {
-        console.log(cache)
-        cache.addAll(assets);
-      })
-      .then(self.skipWaiting())
-      .catch((e) => {
-        console.log(e);
-      })
+      .open(CACHE_NAME)
+      .then((cache) => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
+      .catch((e) => console.error("Service worker install failed:", e)),
   );
 });
 
-self.addEventListener("activate", function (evt) {
+self.addEventListener("activate", (evt) => {
   evt.waitUntil(
     caches
       .keys()
-      .then((keyList) => {
-        return Promise.all(
-          keyList.map((key) => {
-            if (key === CATALOGUE_ASSETS) {
-              console.log("Removed old cache from", key);
-              return caches.delete(key);
-            }
-          })
-        );
-      })
-      .then(() => self.clients.claim())
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== CACHE_NAME)
+            .map((key) => caches.delete(key)),
+        ),
+      )
+      .then(() => self.clients.claim()),
   );
 });
 
-self.addEventListener("fetch", function (evt) {
+self.addEventListener("fetch", (evt) => {
+  const { request } = evt;
+
+  if (request.method !== "GET") return;
+
+  if (request.mode === "navigate") {
+    evt.respondWith(
+      fetch(request).catch(() =>
+        caches.open(CACHE_NAME).then((cache) => cache.match("/")),
+      ),
+    );
+    return;
+  }
+
   evt.respondWith(
-    fetch(evt.request).catch(() => {
-      return caches.open(CATALOGUE_ASSETS).then((cache) => {
-        return cache.match(evt.request);
-      });
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.match(request).then(
+        (cached) =>
+          cached ||
+          fetch(request).then((response) => {
+            // Only cache successful, same-origin responses.
+            if (response.ok && response.type === "basic") {
+              cache.put(request, response.clone());
+            }
+            return response;
+          }),
+      ),
+    ),
   );
-})
+});
