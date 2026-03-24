@@ -1,11 +1,14 @@
 import sqlite3 as sql
+
 import bcrypt
 
 DB_PATH = "database_files/database.db"
 
 
 def get_db_connection() -> sql.Connection:
-    return sql.connect(DB_PATH)
+    con = sql.connect(DB_PATH)
+    con.row_factory = sql.Row
+    return con
 
 
 def insertUser(username: str, password: str, DoB: str) -> None:
