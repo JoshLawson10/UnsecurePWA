@@ -1,16 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for
-from flask_wtf.csrf import CSRFProtect
+from flask import Flask, redirect, render_template, request, url_for
 from flask_login import (
     LoginManager,
     UserMixin,
+    current_user,
+    login_required,
     login_user,
     logout_user,
-    login_required,
-    current_user,
 )
+from flask_wtf.csrf import CSRFProtect
 
-from config import Config
 import user_management as dbHandler
+from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
