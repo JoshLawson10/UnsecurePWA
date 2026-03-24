@@ -3,10 +3,12 @@
 <form action="/signup.html" method="POST" class="box">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="input__wrapper">
-    <input type="text" name="username" placeholder="Username" class="input__field" />
+    <input type="text" name="username" placeholder="Username" class="input__field" maxlength="50"
+      autocomplete="username" required />
   </div>
   <div class="input__wrapper">
-    <input type="password" name="password" placeholder="Password" class="input__field" />
+    <input type="password" name="password" placeholder="Password" class="input__field" maxlength="128"
+      autocomplete="new-password" required />
   </div>
   <div class="input__wrapper">
     <input type="date" name="dob" placeholder="Date of Birth" class="input__field" />
@@ -15,4 +17,7 @@
     <button type="submit" class="btn">Submit</button>
   </div>
 </form>
+{% if msg %}
+<div class="msg">{{ msg }}</div>
+{% endif %}
 {% endblock %}
