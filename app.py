@@ -1,6 +1,6 @@
 import re
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, abort, redirect, render_template, request, url_for
 from flask_login import (
     LoginManager,
     UserMixin,
@@ -36,9 +36,9 @@ def _validate_username(value: str) -> str:
     """Return the username if valid, otherwise abort with 400."""
     value = value.strip()
     if not value or len(value) > MAX_USERNAME_LEN:
-        app.logger.critical(400, "Username must be between 1 and 50 characters.")
+        abort(400, "Username must be between 1 and 50 characters.")
     if not USERNAME_RE.match(value):
-        app.logger.critical(
+        abort(
             400, "Username may only contain letters, digits, underscores, and hyphens."
         )
     return value
@@ -47,7 +47,7 @@ def _validate_username(value: str) -> str:
 def _validate_password(value: str) -> str:
     """Return the password if valid, otherwise abort with 400."""
     if not value or len(value) > MAX_PASSWORD_LEN:
-        app.logger.critical(400, "Password must be between 1 and 128 characters.")
+        abort(400, "Password must be between 1 and 128 characters.")
     return value
 
 
@@ -57,7 +57,7 @@ def _validate_dob(value: str) -> str:
     if not value:
         return ""  # DoB is optional on signup
     if len(value) > MAX_DOB_LEN or not DOB_RE.match(value):
-        app.logger.critical(400, "Date of birth must be in YYYY-MM-DD format.")
+        abort(400, "Date of birth must be in YYYY-MM-DD format.")
     return value
 
 
@@ -65,9 +65,7 @@ def _validate_feedback(value: str) -> str:
     """Return the feedback string if valid, otherwise abort with 400."""
     value = value.strip()
     if not value or len(value) > MAX_FEEDBACK_LEN:
-        app.logger.critical(
-            400, f"Feedback must be between 1 and {MAX_FEEDBACK_LEN} characters."
-        )
+        abort(400, f"Feedback must be between 1 and {MAX_FEEDBACK_LEN} characters.")
     return value
 
 
@@ -108,6 +106,45 @@ def add_security_headers(response):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
     return response
+
+
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template("error.html", code=400, message="Bad request."), 400
+
+
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template("error.html", code=403, message="Forbidden."), 403
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template("error.html", code=404, message="Page not found."), 404
+
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return render_template("error.html", code=405, message="Method not allowed."), 405
+
+
+@app.errorhandler(413)
+def request_too_large(e):
+    return render_template("error.html", code=413, message="Request too large."), 413
+
+
+@app.errorhandler(429)
+def rate_limited(e):
+    return render_template(
+        "error.html", code=429, message="Too many requests. Please wait and try again."
+    ), 429
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    return render_template(
+        "error.html", code=500, message="An internal error occurred."
+    ), 500
 
 
 @app.route("/success.html", methods=["GET", "POST"])
