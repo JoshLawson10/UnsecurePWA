@@ -168,7 +168,7 @@ def internal_error(e):
 def addFeedback():
     if request.method == "POST":
         feedback = _validate_feedback(request.form.get("feedback", ""))
-        dbHandler.insertFeedback(feedback)
+        dbHandler.insertFeedback(current_user.id, feedback)
 
     feedback_list = dbHandler.getFeedbackList()
 

@@ -58,17 +58,22 @@ def userExists(username: str) -> bool:
         return cur.fetchone() is not None
 
 
-def insertFeedback(feedback: str) -> None:
+def insertFeedback(username: str, feedback: str) -> None:
+    username = username[:_MAX_USERNAME]
     feedback = feedback[:_MAX_FEEDBACK]
 
     with get_db_connection() as con:
         con.execute(
-            "INSERT INTO feedback (feedback) VALUES (?)",
-            (feedback,),
+            "INSERT INTO feedback (username, feedback) VALUES (?, ?)",
+            (username, feedback),
         )
 
 
-def getFeedbackList() -> list[str]:
+def getFeedbackList() -> list[dict]:
     with get_db_connection() as con:
-        data = con.execute("SELECT feedback FROM feedback").fetchall()
-        return [row[0] for row in data]
+        rows = con.execute(
+            "SELECT username, feedback FROM feedback ORDER BY id DESC"
+        ).fetchall()
+        return [
+            {"username": row["username"], "feedback": row["feedback"]} for row in rows
+        ]
