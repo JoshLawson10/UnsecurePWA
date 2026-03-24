@@ -1,3 +1,4 @@
+import os
 import re
 
 from flask import Flask, abort, redirect, render_template, request, url_for
@@ -37,7 +38,7 @@ login_manager.init_app(app)
 login_manager.login_view = "home"  # type: ignore
 
 
-# --------- Input Validation ----------
+# ---------- Input Validation ----------
 MAX_USERNAME_LEN: int = 50
 MAX_PASSWORD_LEN: int = 128
 MAX_DOB_LEN: int = 10  # "YYYY-MM-DD"
@@ -48,7 +49,6 @@ DOB_RE: re.Pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _validate_username(value: str) -> str:
-    """Return the username if valid, otherwise abort with 400."""
     value = value.strip()
     if not value or len(value) > MAX_USERNAME_LEN:
         abort(400, "Username must be between 1 and 50 characters.")
@@ -60,14 +60,12 @@ def _validate_username(value: str) -> str:
 
 
 def _validate_password(value: str) -> str:
-    """Return the password if valid, otherwise abort with 400."""
     if not value or len(value) > MAX_PASSWORD_LEN:
         abort(400, "Password must be between 1 and 128 characters.")
     return value
 
 
 def _validate_dob(value: str) -> str:
-    """Return the date-of-birth string if valid, otherwise abort with 400."""
     value = value.strip()
     if not value:
         return ""  # DoB is optional on signup
@@ -77,14 +75,13 @@ def _validate_dob(value: str) -> str:
 
 
 def _validate_feedback(value: str) -> str:
-    """Return the feedback string if valid, otherwise abort with 400."""
     value = value.strip()
     if not value or len(value) > MAX_FEEDBACK_LEN:
         abort(400, f"Feedback must be between 1 and {MAX_FEEDBACK_LEN} characters.")
     return value
 
 
-# --------- User Management ----------
+# ---------- User Model ----------
 class User(UserMixin):
     def __init__(self, username: str):
         self.id = username
@@ -97,12 +94,12 @@ def load_user(username: str):
     return None
 
 
-# --------- security Headers ----------
+# ---------- Security Headers ----------
 @app.after_request
 def add_security_headers(response):
     csp = (
         "default-src 'self'; "
-        "style-src 'self' https://cdn.jsdelivr.net;"
+        "style-src 'self' https://cdn.jsdelivr.net; "
         "script-src 'self' https://cdn.jsdelivr.net; "
         "img-src 'self' data:; "
         "font-src 'self'; "
@@ -115,17 +112,18 @@ def add_security_headers(response):
         "form-action 'self'; "
         "upgrade-insecure-requests"
     )
-
     response.headers["Content-Security-Policy"] = csp
-
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=31536000; includeSubDomains"
+    )
+    response.headers.pop("Server", None)
     return response
 
 
-# --------- Error Handlers ----------
+# ---------- Error Handlers ----------
 @app.errorhandler(400)
 def bad_request(e):
     return render_template("error.html", code=400, message="Bad request."), 400
@@ -165,7 +163,7 @@ def internal_error(e):
     ), 500
 
 
-# --------- Routes ----------
+# ---------- Routes ----------
 @app.route("/success.html", methods=["GET", "POST"])
 @login_required
 def addFeedback():
@@ -194,13 +192,9 @@ def signup():
     DoB = _validate_dob(request.form.get("dob", ""))
 
     if dbHandler.userExists(username):
-        return render_template(
-            "/signup.html",
-            msg="Username already exists.",
-        )
+        return render_template("/signup.html", msg="Username already exists.")
 
     dbHandler.insertUser(username, password, DoB)
-
     return redirect(url_for("home", msg="Account created successfully! Please log in."))
 
 
@@ -209,21 +203,17 @@ def signup():
 @limiter.limit("20 per minute", methods=["POST"])
 def home():
     if request.method == "GET":
-        msg = request.args.get("msg", "")
+        msg = request.args.get("msg", "")[:200]
         return render_template("/index.html", msg=msg)
 
     username = _validate_username(request.form.get("username", ""))
     password = _validate_password(request.form.get("password", ""))
 
     if not dbHandler.authenticateUser(username, password):
-        return render_template(
-            "/index.html",
-            msg="Invalid username or password.",
-        )
+        return render_template("/index.html", msg="Invalid username or password.")
 
     user = User(username)
     login_user(user)
-
     return redirect(url_for("addFeedback"))
 
 
@@ -237,4 +227,8 @@ def logout():
 if __name__ == "__main__":
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
-    app.run(debug=True, host="0.0.0.0", port=3000)
+    app.run(
+        debug=os.environ.get("FLASK_DEBUG", "0") == "1",
+        host="127.0.0.1",
+        port=3000,
+    )

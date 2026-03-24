@@ -14,7 +14,7 @@
     <input type="submit" class="btn" value="Log In" />
   </div>
 </form>
-<!-- User message -->
 {% if msg %}
-<div>{{ msg|safe }}</div>
-{% endif %} {% endblock %}
+<div class="msg">{{ msg }}</div>
+{% endif %}
+{% endblock %}

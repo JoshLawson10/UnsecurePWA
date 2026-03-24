@@ -1,3 +1,4 @@
+import hmac
 import sqlite3 as sql
 
 import bcrypt
@@ -28,6 +29,24 @@ def insertUser(username: str, password: str, DoB: str) -> None:
             "INSERT INTO users (username, password, DoB) VALUES (?, ?, ?)",
             (username, hashed_password_str, DoB),
         )
+        con.commit()
+
+
+def _is_bcrypt_hash(value: str) -> bool:
+    return len(value) == 60 and value.startswith(("$2b$", "$2a$", "$2y$"))
+
+
+def _rehash_password(username: str, plaintext: str) -> None:
+    new_hash: str = bcrypt.hashpw(plaintext.encode("utf-8"), bcrypt.gensalt()).decode(
+        "utf-8"
+    )
+
+    with get_db_connection() as con:
+        con.execute(
+            "UPDATE users SET password = ? WHERE username = ?",
+            (new_hash, username),
+        )
+        con.commit()
 
 
 def authenticateUser(username: str, password: str) -> bool:
@@ -38,15 +57,22 @@ def authenticateUser(username: str, password: str) -> bool:
         )
         row = cur.fetchone()
 
-        if row is None:
-            return False
-
-        stored_hash: str = row[0]
-
-        return bcrypt.checkpw(
+    if row is None:
+        bcrypt.checkpw(
             password.encode("utf-8"),
-            stored_hash.encode("utf-8"),
+            bcrypt.hashpw(b"dummy", bcrypt.gensalt()),
         )
+        return False
+
+    stored: str = row[0]
+
+    if _is_bcrypt_hash(stored):
+        return bcrypt.checkpw(password.encode("utf-8"), stored.encode("utf-8"))
+    else:
+        passwords_match: bool = hmac.compare_digest(stored, password)
+        if passwords_match:
+            _rehash_password(username, password)
+        return passwords_match
 
 
 def userExists(username: str) -> bool:
@@ -59,14 +85,19 @@ def userExists(username: str) -> bool:
 
 
 def insertFeedback(username: str, feedback: str) -> None:
+    """Insert a feedback entry. Raises RuntimeError on database failure."""
     username = username[:_MAX_USERNAME]
     feedback = feedback[:_MAX_FEEDBACK]
 
-    with get_db_connection() as con:
-        con.execute(
-            "INSERT INTO feedback (username, feedback) VALUES (?, ?)",
-            (username, feedback),
-        )
+    try:
+        with get_db_connection() as con:
+            con.execute(
+                "INSERT INTO feedback (username, feedback) VALUES (?, ?)",
+                (username, feedback),
+            )
+            con.commit()
+    except sql.Error as e:
+        raise RuntimeError(f"Failed to insert feedback: {e}") from e
 
 
 def getFeedbackList() -> list[dict]:

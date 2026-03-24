@@ -1,3 +1,10 @@
-{% for item in feedback %}
-<p>{{ item }}</p>
+{% if feedback_list %}
+{% for item in feedback_list %}
+<div class="feedback-entry">
+    <strong>{{ item.username }}</strong>
+    <p>{{ item.feedback }}</p>
+</div>
 {% endfor %}
+{% else %}
+<p>No feedback has been submitted yet.</p>
+{% endif %}
