@@ -1,6 +1,6 @@
 {% extends 'layout.html' %} {% block content %}
-<h1>Signup Form</h1>
-<form action="/signup.html" method="POST" class="box">
+<h1>Sign Up</h1>
+<form action="{{ url_for('signup') }}" method="POST" class="box">
   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
   <div class="input__wrapper">
     <input type="text" name="username" placeholder="Username" class="input__field" maxlength="50"
@@ -14,7 +14,7 @@
     <input type="date" name="dob" placeholder="Date of Birth" class="input__field" />
   </div>
   <div class="input__wrapper">
-    <button type="submit" class="btn">Submit</button>
+    <button type="submit" class="btn">Create Account</button>
   </div>
 </form>
 {% if msg %}
