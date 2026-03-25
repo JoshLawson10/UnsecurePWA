@@ -18,13 +18,22 @@ def initialise_db() -> None:
                 id       INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT    NOT NULL UNIQUE,
                 password TEXT    NOT NULL,
-                DoB      TEXT
+                DoB      TEXT,
+                email    TEXT    NOT NULL DEFAULT ''
             );
 
             CREATE TABLE IF NOT EXISTS feedback (
                 id       INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT    NOT NULL,
                 feedback TEXT    NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS otp_codes (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                username   TEXT    NOT NULL,
+                code_hash  TEXT    NOT NULL,
+                expires_at INTEGER NOT NULL,
+                used       INTEGER NOT NULL DEFAULT 0
             );
         """)
 
@@ -33,4 +42,9 @@ def initialise_db() -> None:
             con.execute(
                 "ALTER TABLE feedback ADD COLUMN username TEXT NOT NULL DEFAULT 'unknown'"
             )
+            con.commit()
+
+        users_cols = _get_column_names(con, "users")
+        if "email" not in users_cols:
+            con.execute("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''")
             con.commit()

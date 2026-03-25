@@ -1,11 +1,6 @@
 Flask
-Flask_cors
-Flask-csp
 Flask-WTF
+Flask-Login
 Flask-Limiter
-qrcode
-pyotp
+Flask-Mail
 bcrypt
-requests
-matplotlib
-rich

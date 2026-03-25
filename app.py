@@ -1,7 +1,8 @@
 import os
 import re
 
-from flask import Flask, abort, redirect, render_template, request, url_for
+from dotenv import load_dotenv
+from flask import Flask, abort, redirect, render_template, request, session, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import (
@@ -17,14 +18,18 @@ from flask_wtf.csrf import CSRFProtect
 import user_management as dbHandler
 from config import Config
 from database_files.initialise_db import initialise_db
+from mailer import mail, send_otp_email
 
 # ---------- App Setup ----------
+load_dotenv()
 app = Flask(__name__)
 app.config.from_object(Config)
 
+# Ensure the database and schema exist before the first request is handled.
 initialise_db()
 
 CSRFProtect(app)
+mail.init_app(app)
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -41,11 +46,15 @@ login_manager.login_view = "home"  # type: ignore
 # ---------- Input Validation ----------
 MAX_USERNAME_LEN: int = 50
 MAX_PASSWORD_LEN: int = 128
-MAX_DOB_LEN: int = 10  # "YYYY-MM-DD"
+MAX_DOB_LEN: int = 10
+MAX_EMAIL_LEN: int = 254
 MAX_FEEDBACK_LEN: int = 500
 
 USERNAME_RE: re.Pattern = re.compile(r"^[a-zA-Z0-9_\-]+$")
 DOB_RE: re.Pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# RFC 5322 simplified — rejects obvious non-emails without over-validating.
+EMAIL_RE: re.Pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+OTP_RE: re.Pattern = re.compile(r"^\d{6}$")
 
 
 def _validate_username(value: str) -> str:
@@ -68,9 +77,25 @@ def _validate_password(value: str) -> str:
 def _validate_dob(value: str) -> str:
     value = value.strip()
     if not value:
-        return ""  # DoB is optional on signup
+        return ""
     if len(value) > MAX_DOB_LEN or not DOB_RE.match(value):
         abort(400, "Date of birth must be in YYYY-MM-DD format.")
+    return value
+
+
+def _validate_email(value: str) -> str:
+    value = value.strip().lower()
+    if not value or len(value) > MAX_EMAIL_LEN:
+        abort(400, "Email must be between 1 and 254 characters.")
+    if not EMAIL_RE.match(value):
+        abort(400, "Please enter a valid email address.")
+    return value
+
+
+def _validate_otp(value: str) -> str:
+    value = value.strip()
+    if not OTP_RE.match(value):
+        abort(400, "Verification code must be exactly 6 digits.")
     return value
 
 
@@ -164,6 +189,8 @@ def internal_error(e):
 
 
 # ---------- Routes ----------
+
+
 @app.route("/success.html", methods=["GET", "POST"])
 @login_required
 def addFeedback():
@@ -172,7 +199,6 @@ def addFeedback():
         dbHandler.insertFeedback(current_user.id, feedback)
 
     feedback_list = dbHandler.getFeedbackList()
-
     return render_template(
         "/success.html",
         state=True,
@@ -190,11 +216,12 @@ def signup():
     username = _validate_username(request.form.get("username", ""))
     password = _validate_password(request.form.get("password", ""))
     DoB = _validate_dob(request.form.get("dob", ""))
+    email = _validate_email(request.form.get("email", ""))
 
     if dbHandler.userExists(username):
         return render_template("/signup.html", msg="Username already exists.")
 
-    dbHandler.insertUser(username, password, DoB)
+    dbHandler.insertUser(username, password, DoB, email)
     return redirect(url_for("home", msg="Account created successfully! Please log in."))
 
 
@@ -212,8 +239,69 @@ def home():
     if not dbHandler.authenticateUser(username, password):
         return render_template("/index.html", msg="Invalid username or password.")
 
+    # Credentials are valid — begin 2FA flow.
+    # Store the username in the session under a pending key so the /verify
+    # route knows who is mid-login.  We do NOT call login_user() yet because
+    # the second factor has not been verified.
+    email = dbHandler.getEmailByUsername(username)
+
+    if not email:
+        # Account has no email address (e.g. created before 2FA was added).
+        # Render an informative message rather than silently failing.
+        return render_template(
+            "/index.html",
+            msg="Your account has no email address registered. "
+            "Please contact an administrator to update your account.",
+        )
+
+    # Generate a fresh OTP, persist its hash, and email the plaintext code.
+    code = dbHandler.generateOTPCode()
+    dbHandler.storeOTPCode(username, code)
+
+    try:
+        send_otp_email(email, code)
+    except Exception:
+        # Log the failure server-side but return a generic message to the
+        # client to avoid leaking infrastructure details.
+        app.logger.exception("Failed to send OTP email to %s", email)
+        return render_template(
+            "/index.html",
+            msg="Could not send verification email. Please try again later.",
+        )
+
+    # Store the pending username in the session.
+    # The session is signed with SECRET_KEY so it cannot be forged.
+    session["2fa_pending"] = True
+    session["2fa_user"] = username
+
+    return redirect(url_for("verify"))
+
+
+@app.route("/verify", methods=["GET", "POST"])
+@limiter.limit("10 per minute")
+def verify():
+    # Guard: only allow access if a 2FA flow is in progress.
+    if not session.get("2fa_pending") or not session.get("2fa_user"):
+        return redirect(url_for("home"))
+
+    if request.method == "GET":
+        return render_template("/verify.html")
+
+    code = _validate_otp(request.form.get("code", ""))
+    username = session["2fa_user"]
+
+    if not dbHandler.verifyOTPCode(username, code):
+        return render_template(
+            "/verify.html", msg="Invalid or expired code. Please try again."
+        )
+
+    # Code is valid — complete the login.
+    session.pop("2fa_pending", None)
+    session.pop("2fa_user", None)
+
     user = User(username)
     login_user(user)
+
     return redirect(url_for("addFeedback"))
 
 

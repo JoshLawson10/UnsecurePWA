@@ -1,0 +1,18 @@
+{% extends 'layout.html' %} {% block content %}
+<h1>Two-Factor Verification</h1>
+<p>A 6-digit verification code has been sent to your registered email address. Enter it below to complete your login.
+</p>
+<form action="{{ url_for('verify') }}" method="post" class="box">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="input__wrapper">
+        <input type="text" name="code" id="code" placeholder="6-digit code" class="input__field" maxlength="6"
+            minlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required />
+    </div>
+    <div class="input__wrapper">
+        <input type="submit" class="btn" value="Verify" />
+    </div>
+</form>
+{% if msg %}
+<div class="msg">{{ msg }}</div>
+{% endif %}
+{% endblock %}
