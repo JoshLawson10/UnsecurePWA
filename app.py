@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from flask import Flask, abort, redirect, render_template, request, session, url_for
+from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import (
@@ -30,6 +31,7 @@ app.config.from_object(Config)
 initialise_db()
 
 CSRFProtect(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 mail.init_app(app)
 
 limiter = Limiter(
