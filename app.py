@@ -2,6 +2,9 @@ import os
 import re
 
 from dotenv import load_dotenv
+
+load_dotenv()
+
 from flask import Flask, abort, redirect, render_template, request, session, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -21,7 +24,6 @@ from database_files.initialise_db import initialise_db
 from mailer import mail, send_otp_email
 
 # ---------- App Setup ----------
-load_dotenv()
 app = Flask(__name__)
 app.config.from_object(Config)
 
@@ -213,10 +215,17 @@ def signup():
     if request.method == "GET":
         return render_template("/signup.html")
 
-    username = _validate_username(request.form.get("username", ""))
-    password = _validate_password(request.form.get("password", ""))
-    DoB = _validate_dob(request.form.get("dob", ""))
-    email = _validate_email(request.form.get("email", ""))
+    # Validate each field individually and return the error inline on the
+    # form rather than aborting with a bare 400, so the user knows exactly
+    # what to fix without losing what they already typed.
+    try:
+        username = _validate_username(request.form.get("username", ""))
+        password = _validate_password(request.form.get("password", ""))
+        DoB = _validate_dob(request.form.get("dob", ""))
+        email = _validate_email(request.form.get("email", ""))
+    except Exception as e:  # noqa: BLE001
+        msg = getattr(e, "description", "Invalid input. Please check your details.")
+        return render_template("/signup.html", msg=msg), 400
 
     if dbHandler.userExists(username):
         return render_template("/signup.html", msg="Username already exists.")
@@ -233,8 +242,12 @@ def home():
         msg = request.args.get("msg", "")[:200]
         return render_template("/index.html", msg=msg)
 
-    username = _validate_username(request.form.get("username", ""))
-    password = _validate_password(request.form.get("password", ""))
+    try:
+        username = _validate_username(request.form.get("username", ""))
+        password = _validate_password(request.form.get("password", ""))
+    except Exception as e:  # noqa: BLE001
+        msg = getattr(e, "description", "Invalid input.")
+        return render_template("/index.html", msg=msg), 400
 
     if not dbHandler.authenticateUser(username, password):
         return render_template("/index.html", msg="Invalid username or password.")
@@ -246,31 +259,28 @@ def home():
     email = dbHandler.getEmailByUsername(username)
 
     if not email:
-        # Account has no email address (e.g. created before 2FA was added).
-        # Render an informative message rather than silently failing.
         return render_template(
             "/index.html",
             msg="Your account has no email address registered. "
             "Please contact an administrator to update your account.",
         )
 
-    # Generate a fresh OTP, persist its hash, and email the plaintext code.
+    # Generate a fresh OTP and attempt to email it BEFORE persisting anything.
+    # Only store the code and advance the session once delivery is confirmed,
+    # so the user is never redirected to /verify with no valid code waiting.
     code = dbHandler.generateOTPCode()
-    dbHandler.storeOTPCode(username, code)
 
     try:
         send_otp_email(email, code)
     except Exception:
-        # Log the failure server-side but return a generic message to the
-        # client to avoid leaking infrastructure details.
         app.logger.exception("Failed to send OTP email to %s", email)
         return render_template(
             "/index.html",
             msg="Could not send verification email. Please try again later.",
         )
 
-    # Store the pending username in the session.
-    # The session is signed with SECRET_KEY so it cannot be forged.
+    # Email confirmed sent — now persist the hashed code and set the session.
+    dbHandler.storeOTPCode(username, code)
     session["2fa_pending"] = True
     session["2fa_user"] = username
 

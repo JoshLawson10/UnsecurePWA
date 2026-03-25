@@ -1,20 +1,17 @@
 import os
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 
 class Config:
     SECRET_KEY: str = os.environ["SECRET_KEY"]
 
     SESSION_COOKIE_HTTPONLY: bool = True
-    SESSION_COOKIE_SECURE: bool = True
+    _https: bool = os.environ.get("HTTPS", "false").lower() == "true"
+    SESSION_COOKIE_SECURE: bool = _https
     SESSION_COOKIE_SAMESITE: str = "Lax"
     SESSION_COOKIE_NAME: str = "session"
 
     REMEMBER_COOKIE_HTTPONLY: bool = True
-    REMEMBER_COOKIE_SECURE: bool = True
+    REMEMBER_COOKIE_SECURE: bool = _https
 
     PERMANENT_SESSION_LIFETIME: int = 1800
 
