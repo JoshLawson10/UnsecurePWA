@@ -27,7 +27,6 @@ from mailer import mail, send_otp_email
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Ensure the database and schema exist before the first request is handled.
 initialise_db()
 
 CSRFProtect(app)
@@ -54,7 +53,6 @@ MAX_FEEDBACK_LEN: int = 500
 
 USERNAME_RE: re.Pattern = re.compile(r"^[a-zA-Z0-9_\-]+$")
 DOB_RE: re.Pattern = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-# RFC 5322 simplified — rejects obvious non-emails without over-validating.
 EMAIL_RE: re.Pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 OTP_RE: re.Pattern = re.compile(r"^\d{6}$")
 
@@ -215,9 +213,6 @@ def signup():
     if request.method == "GET":
         return render_template("/signup.html")
 
-    # Validate each field individually and return the error inline on the
-    # form rather than aborting with a bare 400, so the user knows exactly
-    # what to fix without losing what they already typed.
     try:
         username = _validate_username(request.form.get("username", ""))
         password = _validate_password(request.form.get("password", ""))
@@ -252,10 +247,6 @@ def home():
     if not dbHandler.authenticateUser(username, password):
         return render_template("/index.html", msg="Invalid username or password.")
 
-    # Credentials are valid — begin 2FA flow.
-    # Store the username in the session under a pending key so the /verify
-    # route knows who is mid-login.  We do NOT call login_user() yet because
-    # the second factor has not been verified.
     email = dbHandler.getEmailByUsername(username)
 
     if not email:
@@ -265,9 +256,6 @@ def home():
             "Please contact an administrator to update your account.",
         )
 
-    # Generate a fresh OTP and attempt to email it BEFORE persisting anything.
-    # Only store the code and advance the session once delivery is confirmed,
-    # so the user is never redirected to /verify with no valid code waiting.
     code = dbHandler.generateOTPCode()
 
     try:
@@ -279,7 +267,6 @@ def home():
             msg="Could not send verification email. Please try again later.",
         )
 
-    # Email confirmed sent — now persist the hashed code and set the session.
     dbHandler.storeOTPCode(username, code)
     session["2fa_pending"] = True
     session["2fa_user"] = username
@@ -290,7 +277,6 @@ def home():
 @app.route("/verify", methods=["GET", "POST"])
 @limiter.limit("10 per minute")
 def verify():
-    # Guard: only allow access if a 2FA flow is in progress.
     if not session.get("2fa_pending") or not session.get("2fa_user"):
         return redirect(url_for("home"))
 
@@ -305,7 +291,6 @@ def verify():
             "/verify.html", msg="Invalid or expired code. Please try again."
         )
 
-    # Code is valid — complete the login.
     session.pop("2fa_pending", None)
     session.pop("2fa_user", None)
 

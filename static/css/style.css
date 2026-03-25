@@ -75,7 +75,7 @@ nav {
 nav img {
   height: 40px;
   width: 40px;
-  filter: invert(1) brightness(2) sepia(1) hue-rotate(152deg) saturate(4);
+  filter: invert(1) brightness(2);
   flex-shrink: 0;
 }
 

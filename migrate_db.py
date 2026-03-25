@@ -1,5 +1,5 @@
 # -----------
-# This is a helper file to migrate the database schema after adding the "username" column to the feedback table.
+# This is a helper file to migrate database schema
 # -----------
 
 import sqlite3
