@@ -1,27 +1,51 @@
 {% extends 'layout.html' %} {% block content %}
-<h1>Sign Up</h1>
-<form action="{{ url_for('signup') }}" method="POST" class="box">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <div class="input__wrapper">
-    <input type="text" name="username" placeholder="Username" class="input__field" maxlength="50"
-      autocomplete="username" required />
+
+<div class="form-card">
+  <div class="form-card-header">
+    <h1>Create account</h1>
+    <p>Fill in your details to get started</p>
   </div>
-  <div class="input__wrapper">
-    <input type="email" name="email" placeholder="Email address" class="input__field" maxlength="254"
-      autocomplete="email" required />
+
+  <div class="form-card-body">
+    <form action="{{ url_for('signup') }}" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="field">
+        <label for="username">Username</label>
+        <input type="text" name="username" id="username" placeholder="your_username" maxlength="50"
+          autocomplete="username" required />
+      </div>
+
+      <div class="field">
+        <label for="email">Email address</label>
+        <input type="email" name="email" id="email" placeholder="you@example.com" maxlength="254" autocomplete="email"
+          required />
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" name="password" id="password" placeholder="••••••••••" maxlength="128"
+          autocomplete="new-password" required />
+      </div>
+
+      <div class="field">
+        <label for="dob">Date of birth <span style="opacity:0.5;font-weight:400;">(optional)</span></label>
+        <input type="date" name="dob" id="dob" class="input__field" />
+      </div>
+
+      {% if msg %}
+      <div class="msg">{{ msg }}</div>
+      {% endif %}
+
+      <div class="field">
+        <button type="submit" class="btn btn-full">Create account</button>
+      </div>
+    </form>
   </div>
-  <div class="input__wrapper">
-    <input type="password" name="password" placeholder="Password" class="input__field" maxlength="128"
-      autocomplete="new-password" required />
+
+  <div class="form-footer">
+    Already have an account? <a href="{{ url_for('home') }}">Sign in</a>
   </div>
-  <div class="input__wrapper">
-    <input type="date" name="dob" placeholder="Date of Birth" class="input__field" />
-  </div>
-  <div class="input__wrapper">
-    <button type="submit" class="btn">Create Account</button>
-  </div>
-</form>
-{% if msg %}
-<div class="msg">{{ msg }}</div>
-{% endif %}
+</div>
+
 {% endblock %}

@@ -1,10 +1,15 @@
 {% if feedback_list %}
-{% for item in feedback_list %}
-<div class="feedback-entry">
-    <strong>{{ item.username }}</strong>
-    <p>{{ item.feedback }}</p>
+<div class="feedback-list">
+    {% for item in feedback_list %}
+    <div class="feedback-entry">
+        <strong>{{ item.username }}</strong>
+        <p>{{ item.feedback }}</p>
+    </div>
+    {% endfor %}
 </div>
-{% endfor %}
 {% else %}
-<p>No feedback has been submitted yet.</p>
+<div class="feedback-empty">
+    <div style="font-size:1.5rem;margin-bottom:0.5rem;">💬</div>
+    <p>No feedback yet. Be the first to share!</p>
+</div>
 {% endif %}

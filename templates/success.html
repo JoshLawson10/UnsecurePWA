@@ -1,20 +1,34 @@
 {% extends 'layout.html' %}
 {% block content %}
-<h1>Welcome, {{ value }}!</h1>
-<form action="{{ url_for('addFeedback') }}" method="post" class="box">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-  <div class="input__wrapper">
-    <textarea name="feedback" id="feedback" placeholder="Enter your feedback here" class="input__field"
-      style="height:100px;vertical-align:top" maxlength="500" required></textarea>
+
+<div class="welcome-banner">
+  <div class="welcome-avatar">{{ value[0]|upper }}</div>
+  <div class="welcome-text">
+    <h1>Welcome back, {{ value }}!</h1>
+    <p>Share your thoughts with the community below</p>
   </div>
-  <div class="input__wrapper">
-    <input type="submit" class="btn" value="Submit Feedback" />
-  </div>
-</form>
-<hr />
-<br />
-<h1>Community Feedback</h1>
-<div>
-  {% include "partials/success_feedback.html" %}
 </div>
+
+<div class="success-grid">
+  <div>
+    <div class="section-title">Submit feedback</div>
+    <div class="card feedback-card">
+      <form action="{{ url_for('addFeedback') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label for="feedback">Your message</label>
+          <textarea name="feedback" id="feedback" placeholder="Share your thoughts, ideas, or feedback…" maxlength="500"
+            required></textarea>
+        </div>
+        <button type="submit" class="btn btn-full">Post feedback</button>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-title">Community feedback</div>
+    {% include "partials/success_feedback.html" %}
+  </div>
+</div>
+
 {% endblock %}

@@ -1,18 +1,35 @@
 {% extends 'layout.html' %} {% block content %}
-<h1>Two-Factor Verification</h1>
-<p>A 6-digit verification code has been sent to your registered email address. Enter it below to complete your login.
-</p>
-<form action="{{ url_for('verify') }}" method="post" class="box">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="input__wrapper">
-        <input type="text" name="code" id="code" placeholder="6-digit code" class="input__field" maxlength="6"
-            minlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required />
+
+<div class="form-card">
+    <div class="form-card-header" style="text-align:center;">
+        <div class="otp-badge">🔐</div>
+        <h1>Verify your identity</h1>
+        <p>A 6-digit code has been sent to your registered email address</p>
     </div>
-    <div class="input__wrapper">
-        <input type="submit" class="btn" value="Verify" />
+
+    <div class="form-card-body">
+        <form action="{{ url_for('verify') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="field">
+                <label for="code">Verification code</label>
+                <input type="text" name="code" id="code" placeholder="000000" maxlength="6" minlength="6"
+                    pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code"
+                    style="font-family: var(--font-mono); font-size: 1.5rem; letter-spacing: 0.25em; text-align: center;"
+                    required autofocus />
+            </div>
+
+            {% if msg %}
+            <div class="msg">{{ msg }}</div>
+            {% endif %}
+
+            <div class="field" style="margin-top:1.5rem; margin-bottom:0;">
+                <button type="submit" class="btn btn-full">Verify →</button>
+            </div>
+        </form>
+        <p class="otp-hint">Didn't receive a code? Check your spam folder or <a href="{{ url_for('home') }}"
+                style="color:var(--accent);">go back and try again</a>.</p>
     </div>
-</form>
-{% if msg %}
-<div class="msg">{{ msg }}</div>
-{% endif %}
+</div>
+
 {% endblock %}
